@@ -12,30 +12,28 @@ ESP8266WebServer server(80);
 
 // ----------------- Leds
 #define LED_PIN     4
-#define NUM_LEDS    1
-#define BRIGHTNESS  128
+#define NUM_LEDS    120
+#define BRIGHTNESS  60
 #define LED_TYPE    WS2811
 #define COLOR_ORDER GRB
 #define UPDATES_PER_SECOND 100
 CRGB leds[NUM_LEDS];
 
-const int led = 0;
-
-void handleNotFound();
-void handleRoot();
-void handleLED();
+enum struct ColorChannel
+{
+  RED = 0, GREEN = 1, BLUE = 2
+};
 
 void setup(void) {
 
   // Initilize LED strip
   FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
   FastLED.setBrightness(BRIGHTNESS);
-  leds[0] = CRGB::Red;
-  FastLED.show();
+  setAllLedsColor(CRGB::Red);
 
   // Turn off onboard LED
-  pinMode(led, OUTPUT);
-  digitalWrite(led, 0);
+  pinMode(0, OUTPUT);
+  digitalWrite(0, 0);
 
   // Start WiFi station
   Serial.begin(115200);
@@ -60,14 +58,15 @@ void setup(void) {
   server.on("/", HTTP_GET, handleRoot);
   server.on("/turnLed", HTTP_GET, handleTurnLed);
   server.on("/setLedBrightness", HTTP_GET, handleSetLedBrightness);
+  server.on("/setLedChannelValue", HTTP_GET, handleSetLedChannelValue);
 
   server.onNotFound(handleNotFound);
 
   server.begin();
   Serial.println("HTTP server started");
 
-  leds[0] = CRGB::Green;
-  FastLED.show();
+  setAllLedsColor(CRGB::Green);
+
 }
 
 void loop(void) {
@@ -75,19 +74,19 @@ void loop(void) {
   MDNS.update();
 }
 
-void handleRoot() 
+void handleRoot()
 {
   String s = MAIN_page;
   server.send(200, "text/html", s);
 }
 
-void handleTurnLed() 
+void handleTurnLed()
 {
   String ledState = server.arg("ledState");
   Serial.println(ledState);
   if (ledState == "1")
   {
-    leds[0] = CRGB::Green;
+    setAllLedsColor(CRGB::Green);
     FastLED.show();
   }
   else if (ledState == "0")
@@ -98,13 +97,36 @@ void handleTurnLed()
   server.send(200, "text/plane", ledState);
 }
 
-void handleSetLedBrightness() 
+void handleSetLedBrightness()
 {
   String ledBrightness = server.arg("ledBrightness");
   Serial.println(ledBrightness);
   FastLED.setBrightness(ledBrightness.toInt());
   FastLED.show();
   server.send(200, "text/plane", ledBrightness);
+}
+
+void handleSetLedChannelValue()
+{
+  String ledRedValue = server.arg("ledRedValue");
+  String ledGreenValue = server.arg("ledGreenValue");
+  String ledBlueValue = server.arg("ledBlueValue");
+
+  if (ledRedValue.length() != 0)
+  {
+    setAllLedsChannelValue((int)ColorChannel::RED, ledRedValue.toInt());
+    server.send(200, "text/plane", ledRedValue);
+  }
+  if (ledGreenValue.length() != 0)
+  {
+    setAllLedsChannelValue((int)ColorChannel::GREEN, ledGreenValue.toInt());
+    server.send(200, "text/plane", ledGreenValue);
+  }
+  if (ledBlueValue.length() != 0)
+  {
+    setAllLedsChannelValue((int)ColorChannel::BLUE, ledBlueValue.toInt());
+    server.send(200, "text/plane", ledBlueValue);
+  }
 }
 
 void handleNotFound() {
@@ -120,4 +142,32 @@ void handleNotFound() {
     message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
   }
   server.send(404, "text/plain", message);
+}
+
+void setAllLedsColor(CRGB color)
+{
+  for (int i = 0; i < NUM_LEDS; i++)
+    leds[i] = color;
+  FastLED.show();
+}
+
+void setAllLedsChannelValue(int colorChannel, int value)
+{
+  for (int i = 0; i < NUM_LEDS; i++)
+  {
+    switch (colorChannel)
+    {
+      case ((int) ColorChannel::RED):
+        leds[i].red = value;
+        break;
+      case ((int) ColorChannel::GREEN):
+        leds[i].green = value;
+        break;
+      case ((int) ColorChannel::BLUE):
+        leds[i].blue = value;
+        break;
+    }
+  }
+
+  FastLED.show();
 }
