@@ -33,6 +33,10 @@ extern const TProgmemPalette16 myRedWhiteBluePalette_p PROGMEM;
 
 bool gReverseDirection = false;
 
+// ----------------- Buttons
+#define BUTTON_UP_PIN   5
+#define BUTTON_DOWN_PIN 6
+
 void setup(void) {
 
   // Initilize LED strip
@@ -43,6 +47,10 @@ void setup(void) {
   // Turn off onboard LED
   pinMode(0, OUTPUT);
   digitalWrite(0, 0);
+
+  // Set 2 push-buttons as input
+  pinMode(BUTTON_UP_PIN, INPUT_PULLUP); // turn on pullup resistors
+  pinMode(BUTTON_DOWN_PIN, INPUT_PULLUP); // and set pins to input
 
   // Start WiFi station
   Serial.begin(115200);
@@ -82,9 +90,10 @@ void setup(void) {
 void loop(void) {
   server.handleClient();
   MDNS.update();
-  
+  handleButtons();
+
   static uint8_t startIndex = 0;
-  
+
   if (animationNumber == 0)
   {
     // Do nothing
@@ -93,7 +102,7 @@ void loop(void) {
   else if (animationNumber == 4)
   {
     ledAnimationCylon();
-}
+  }
   else if (animationNumber == 5)
   {
     ledAnimationFire2012();
@@ -107,6 +116,45 @@ void loop(void) {
     FastLED.show();
     FastLED.delay(1000 / UPDATES_PER_SECOND);
   }
+}
+
+void handleButtons()
+{
+  static bool  upButtonState = HIGH, downButtonState = HIGH, lastUpButtonState = HIGH, lastDownButtonState = HIGH;
+  unsigned long lastUpButtonDebounceTime = 0, lastDownButtonDebounceTime = 0; // the last time the output pin was toggled
+  unsigned long debounceDelay = 50;    // the debounce time; increase if the output flickers
+
+  int readingUpButton = digitalRead(BUTTON_UP_PIN);
+  int readingDownButton = digitalRead(BUTTON_DOWN_PIN);
+
+  if (readingUpButton != lastUpButtonState) {
+    lastUpButtonDebounceTime = millis();
+  }
+
+  if ((millis() - lastUpButtonDebounceTime) > debounceDelay) {
+    if (readingUpButton != upButtonState) {
+
+      upButtonState = readingUpButton;
+      if (animationNumber < 20)
+        animationNumber++;
+    }
+  }
+
+  if (readingDownButton != lastDownButtonState) {
+    lastDownButtonDebounceTime = millis();
+  }
+
+  if ((millis() - lastDownButtonDebounceTime) > debounceDelay) {
+    if (readingDownButton != downButtonState) {
+
+      downButtonState = readingDownButton;
+      if (animationNumber > 0)
+        animationNumber--;
+    }
+  }
+
+  lastUpButtonState = readingUpButton;
+  lastDownButtonState = readingDownButton;
 }
 
 void handleRoot()
@@ -335,7 +383,7 @@ void ledAnimationCylon()
     server.handleClient();
     MDNS.update();
     if (animationNumber != 4)
-     return;
+      return;
   }
   for (int i = (NUM_LEDS) - 1; i >= 0; i--) {
     leds[i] = CHSV(hue++, 255, 255);
@@ -347,7 +395,7 @@ void ledAnimationCylon()
     server.handleClient();
     MDNS.update();
     if (animationNumber != 4)
-     return;
+      return;
   }
 }
 
@@ -356,34 +404,34 @@ void ledAnimationFire2012()
   int cooling =  55;
   int sparking = 120;
 
-// Array of temperature readings at each simulation cell
+  // Array of temperature readings at each simulation cell
   static byte heat[NUM_LEDS];
 
   // Step 1.  Cool down every cell a little
-    for( int i = 0; i < NUM_LEDS; i++) {
-      heat[i] = qsub8( heat[i],  random8(0, ((cooling * 10) / NUM_LEDS) + 2));
-    }
-  
-    // Step 2.  Heat from each cell drifts 'up' and diffuses a little
-    for( int k= NUM_LEDS - 1; k >= 2; k--) {
-      heat[k] = (heat[k - 1] + heat[k - 2] + heat[k - 2] ) / 3;
-    }
-    
-    // Step 3.  Randomly ignite new 'sparks' of heat near the bottom
-    if( random8() < sparking ) {
-      int y = random8(7);
-      heat[y] = qadd8( heat[y], random8(160,255) );
-    }
+  for ( int i = 0; i < NUM_LEDS; i++) {
+    heat[i] = qsub8( heat[i],  random8(0, ((cooling * 10) / NUM_LEDS) + 2));
+  }
 
-    // Step 4.  Map from heat cells to LED colors
-    for( int j = 0; j < NUM_LEDS; j++) {
-      CRGB color = HeatColor( heat[j]);
-      int pixelnumber;
-      if( gReverseDirection ) {
-        pixelnumber = (NUM_LEDS-1) - j;
-      } else {
-        pixelnumber = j;
-      }
-      leds[pixelnumber] = color;
+  // Step 2.  Heat from each cell drifts 'up' and diffuses a little
+  for ( int k = NUM_LEDS - 1; k >= 2; k--) {
+    heat[k] = (heat[k - 1] + heat[k - 2] + heat[k - 2] ) / 3;
+  }
+
+  // Step 3.  Randomly ignite new 'sparks' of heat near the bottom
+  if ( random8() < sparking ) {
+    int y = random8(7);
+    heat[y] = qadd8( heat[y], random8(160, 255) );
+  }
+
+  // Step 4.  Map from heat cells to LED colors
+  for ( int j = 0; j < NUM_LEDS; j++) {
+    CRGB color = HeatColor( heat[j]);
+    int pixelnumber;
+    if ( gReverseDirection ) {
+      pixelnumber = (NUM_LEDS - 1) - j;
+    } else {
+      pixelnumber = j;
     }
+    leds[pixelnumber] = color;
+  }
 }
