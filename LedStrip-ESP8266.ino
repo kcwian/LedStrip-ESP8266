@@ -61,7 +61,7 @@ void setup(void) {
 
   // Wait for connection
   while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
+    connectingAnimation();
   }
   Serial.println("");
   Serial.print("Connected to ");
@@ -84,8 +84,8 @@ void setup(void) {
   server.begin();
   Serial.println("HTTP server started");
 
-  setAllLedsColor(CRGB::Green);
-
+  delay(2000);
+  setAnimation(1);
 }
 
 void loop(void) {
@@ -421,6 +421,52 @@ const TProgmemPalette16 myRedWhiteBluePalette_p PROGMEM =
   CRGB::Black
 };
 
+void connectingAnimation()
+{
+  static bool initalize = true;
+  //int ledsToAnimate = 50;
+  static int actualLed = NUM_LEDS - 1;
+
+  if (initalize) {
+    initalize = false;
+    FastLED.clear();
+  }
+
+  if (actualLed >= 0 && actualLed < NUM_LEDS) {
+    leds[actualLed] = CRGB::Red;
+    FastLED.show();
+    FastLED.delay(200);
+  }
+  actualLed--;
+
+  if (WiFi.status() == WL_CONNECTED)
+  {
+    for (int i = actualLed; i >= 0; i--) {
+      leds[i] = CRGB::Red;
+      FastLED.show();
+      FastLED.delay(10);
+    }
+
+    for (int j = 0; j < 128; j++) {
+      for (int i = 0; i < NUM_LEDS; i++) {
+        if (leds[i].red - 2 > 1)
+          leds[i].red -= 2;
+        else
+          leds[i].red = 0;
+        if (leds[i].green < 128)
+          leds[i].green += 2;
+      }
+      FastLED.show();
+      FastLED.delay(1);
+    }
+
+  }
+
+  else if (actualLed == 0) {
+    FastLED.clear();
+    actualLed = NUM_LEDS - 1;
+  }
+}
 
 
 void ledAnimationCylon()
