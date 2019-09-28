@@ -7,7 +7,7 @@ const char MAIN_page[] PROGMEM = R"=====(
     <button type="button" onclick="turnLed(1)">LED ON</button>
     <button type="button" onclick="turnLed(0)">LED OFF</button><br>
 
-    <input id="slideBrightness" type="range" min="1" max="255" step="1" value="10"
+    <input id="slideBrightness" type="range" min="1" max="60" step="1" value="10"
       oninput="setLedBrightness(this.value)">
     <br>
     <input id="slideRedValue" type="range" min="1" max="255" step="1" value="10"
@@ -17,7 +17,7 @@ const char MAIN_page[] PROGMEM = R"=====(
     <input id="slideBlueValue" type="range" min="1" max="255" step="1" value="10"
       oninput="setLedChannelValue(this.id, this.value)"><br>
 
-    <input id="animationSelector" type="number" min="0" max="20" value="1"
+    <input id="animationSelector" type="number" min="0" max="20" value="0"
       oninput="setAnimationNumber(this.value)"><br>
   </div>
 

@@ -13,7 +13,6 @@ ESP8266WebServer server(80);
 // ----------------- Leds
 #define LED_PIN     4
 #define NUM_LEDS    120
-#define BRIGHTNESS  60
 #define LED_TYPE    WS2811
 #define COLOR_ORDER GRB
 #define UPDATES_PER_SECOND 100
@@ -25,6 +24,7 @@ enum struct ColorChannel
 };
 
 int animationNumber = 0;
+int ledBrightness = 30;
 CRGBPalette16 currentPalette;
 TBlendType    currentBlending;
 
@@ -34,19 +34,20 @@ extern const TProgmemPalette16 myRedWhiteBluePalette_p PROGMEM;
 bool gReverseDirection = false;
 
 // ----------------- Buttons
-#define BUTTON_UP_PIN   5
-#define BUTTON_DOWN_PIN 6
+#define BUTTON_UP_PIN   12
+#define BUTTON_DOWN_PIN 14
 
 void setup(void) {
 
   // Initilize LED strip
   FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
-  FastLED.setBrightness(BRIGHTNESS);
+  FastLED.setBrightness(ledBrightness);
   setAllLedsColor(CRGB::Red);
 
   // Turn off onboard LED
-  pinMode(0, OUTPUT);
-  digitalWrite(0, 0);
+  pinMode(LED_BUILTIN, OUTPUT);
+
+  // digitalWrite(0, 1);
 
   // Set 2 push-buttons as input
   pinMode(BUTTON_UP_PIN, INPUT_PULLUP); // turn on pullup resistors
@@ -90,72 +91,111 @@ void setup(void) {
 void loop(void) {
   server.handleClient();
   MDNS.update();
-  handleButtons();
+  handleAnimations();
+}
 
-  static uint8_t startIndex = 0;
+void handleAnimations() {
 
   if (animationNumber == 0)
   {
     // Do nothing
+    handleButtons();
   }
   // Special Animations
   else if (animationNumber == 4)
   {
-    ledAnimationCylon();
+    ledAnimationCylon(); // handleButtons() inside
   }
   else if (animationNumber == 5)
   {
     ledAnimationFire2012();
     FastLED.show();
     FastLED.delay(1000 / UPDATES_PER_SECOND);
+    handleButtons();
   }
   else
   {
+    static uint8_t startIndex = 0;
     startIndex = startIndex + 1; /* motion speed */
     FillLEDsFromPaletteColors( startIndex);
     FastLED.show();
     FastLED.delay(1000 / UPDATES_PER_SECOND);
+    handleButtons();
   }
 }
 
 void handleButtons()
 {
   static bool  upButtonState = HIGH, downButtonState = HIGH, lastUpButtonState = HIGH, lastDownButtonState = HIGH;
-  unsigned long lastUpButtonDebounceTime = 0, lastDownButtonDebounceTime = 0; // the last time the output pin was toggled
+  static unsigned long lastUpButtonDebounceTime = 0, lastDownButtonDebounceTime = 0; // the last time the output pin was toggled
+  static unsigned long lastUpButtonHoldDownTime = 0, lastDownButtonHoldDownTime = 0;
   unsigned long debounceDelay = 50;    // the debounce time; increase if the output flickers
+  unsigned long holdDownDelay = 1000;    // the hold down time; changees brightness
+  static bool brightnessChangedUp = false, brightnessChangedDown = false;
+
 
   int readingUpButton = digitalRead(BUTTON_UP_PIN);
   int readingDownButton = digitalRead(BUTTON_DOWN_PIN);
 
   if (readingUpButton != lastUpButtonState) {
     lastUpButtonDebounceTime = millis();
+
+    if (readingUpButton == LOW)
+      lastUpButtonHoldDownTime = millis();
   }
 
   if ((millis() - lastUpButtonDebounceTime) > debounceDelay) {
     if (readingUpButton != upButtonState) {
 
       upButtonState = readingUpButton;
-      if (animationNumber < 20)
-        animationNumber++;
+
+      if (animationNumber < 20 && upButtonState == HIGH) { // Release button changes animation
+        if (brightnessChangedUp)
+          brightnessChangedUp = false;
+        else
+          setAnimation(animationNumber + 1);
+      }
+    }
+    else if (upButtonState == LOW && (millis() - lastUpButtonHoldDownTime) > holdDownDelay) {
+      setLedBrightness(ledBrightness + 1);
+      lastUpButtonHoldDownTime = millis() - (holdDownDelay - 50); // Waits 2s for the first time, then only 100ms
+      upButtonState = readingUpButton;
+      brightnessChangedUp = true;
     }
   }
 
   if (readingDownButton != lastDownButtonState) {
     lastDownButtonDebounceTime = millis();
+
+    if (readingDownButton == LOW)
+      lastDownButtonHoldDownTime = millis();
   }
 
   if ((millis() - lastDownButtonDebounceTime) > debounceDelay) {
     if (readingDownButton != downButtonState) {
 
       downButtonState = readingDownButton;
-      if (animationNumber > 0)
-        animationNumber--;
+
+      if (animationNumber > 0 && downButtonState == HIGH) { // Release button changes animation
+        if (brightnessChangedDown)
+          brightnessChangedDown = false;
+        else
+          setAnimation(animationNumber - 1);
+      }
+    }
+    else if (downButtonState == LOW && (millis() - lastDownButtonHoldDownTime) > holdDownDelay) {
+      setLedBrightness(ledBrightness - 1);
+      lastDownButtonHoldDownTime = millis() - (holdDownDelay - 50); // Waits 2s for the first time, then only 100ms
+      downButtonState = readingDownButton;
+      brightnessChangedDown = true;
     }
   }
 
   lastUpButtonState = readingUpButton;
   lastDownButtonState = readingDownButton;
 }
+
+
 
 void handleRoot()
 {
@@ -183,11 +223,20 @@ void handleTurnLed()
 
 void handleSetLedBrightness()
 {
-  String ledBrightness = server.arg("ledBrightness");
-  Serial.println(ledBrightness);
-  FastLED.setBrightness(ledBrightness.toInt());
+  String ledBrightness_s = server.arg("ledBrightness");
+  setLedBrightness(ledBrightness_s.toInt());
+  server.send(200, "text/plane", ledBrightness_s);
+}
+
+void setLedBrightness(int newLedBrightness)
+{
+  if (newLedBrightness < 0)
+    newLedBrightness = 0;
+  else if (newLedBrightness > 60)
+    newLedBrightness = 60;
+  ledBrightness = newLedBrightness;
+  FastLED.setBrightness(ledBrightness);
   FastLED.show();
-  server.send(200, "text/plane", ledBrightness);
 }
 
 void handleSetLedChannelValue()
@@ -220,8 +269,13 @@ void handleSetAnimationNumber()
   int animationNumber_i = animationNumber_s.toInt();
   if (animationNumber_i < 0 || animationNumber_i > 20)
     return;
+  setAnimation(animationNumber_i);
+  server.send(200, "text/plane", animationNumber_s);
+}
 
-  switch (animationNumber_i)
+void setAnimation(int newAnimationNumber)
+{
+  switch (newAnimationNumber)
   {
     case 0:
       break;
@@ -262,8 +316,7 @@ void handleSetAnimationNumber()
       SetupBlackAndWhiteStripedPalette();       currentBlending = NOBLEND;
       break;
   }
-  animationNumber = animationNumber_i;
-  server.send(200, "text/plane", animationNumber_s);
+  animationNumber = newAnimationNumber;
 }
 
 void handleNotFound() {
@@ -380,6 +433,7 @@ void ledAnimationCylon()
       leds[i].nscale8(250);
     }
     delay(10);
+    handleButtons();
     server.handleClient();
     MDNS.update();
     if (animationNumber != 4)
@@ -392,6 +446,7 @@ void ledAnimationCylon()
       leds[i].nscale8(250);
     }
     delay(10);
+    handleButtons();
     server.handleClient();
     MDNS.update();
     if (animationNumber != 4)
