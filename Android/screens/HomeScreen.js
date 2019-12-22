@@ -45,7 +45,7 @@ const Picker = () => (
 
 import { MonoText } from '../components/StyledText';
 
-export default function HomeScreen() {
+export default function HomeScreen(props) {
   return (
     <View style={styles.container}>
       <Text> AA</Text>
@@ -62,19 +62,21 @@ export default function HomeScreen() {
             borderRadius: 50,
           }}
         >
-          <Text style={{color: 'blue' }}>Press me</Text>
+          <Text style={{ color: 'blue' }}>Press me</Text>
         </TouchableOpacity>
       </View>
       <View style={styles.fixToText}>
-        <Button
-          title="Turn Led On"
-          onPress={() => turnLed(1)}
-        />
-        <Button
-          title="Turn Led Off"
-          onPress={() => turnLed(0)}
-        />
+        <Text>{props.screenProps.ipAddress}</Text>
       </View>
+      <Button
+        title="Turn Led On"
+        onPress={() => turnLed(1)}
+      />
+      <Button
+        title="Turn Led Off"
+        onPress={() => turnLed(0)}
+        />
+       
     </View >
 
   );
