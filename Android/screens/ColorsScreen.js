@@ -10,6 +10,7 @@ var HsvToRgb = require('../helper/HsvToRgb.js');
 export default class ColorsScreen extends Component {
 
   changeColor(value) {
+    this.setAnimationRequest(0);
     var xhttp = new XMLHttpRequest();
     xhttp.onreadystatechange = function () {
       if (this.readyState == 4 && this.status == 200) {
@@ -25,6 +26,22 @@ export default class ColorsScreen extends Component {
       value.h = 360 + value.h;
     var color = HsvToRgb.getRGB(value.h / 360, value.s / 100, value.v / 100);
     xhttp.open("GET", "http://" + this.props.screenProps.ipAddress + "/setLedChannelValue?ledRedValue=" + color.r + "&ledGreenValue=" + color.g + "&ledBlueValue=" + color.b, true);
+    xhttp.send();
+  }
+
+  setAnimationRequest(value) {
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function () {
+      if (this.readyState == 4 && this.status == 200) {
+        //document.getElementById("ledState").innerHTML = this.responseText;
+      }
+      if (this.status === 200) {
+        console.log('success', this.responseText);
+      } else {
+        console.log('error', this.responseText);
+      }
+    };
+    xhttp.open("GET", "http://" + this.props.screenProps.ipAddress + "/setAnimationNumber?animationNumber=" + value, true);
     xhttp.send();
   }
 

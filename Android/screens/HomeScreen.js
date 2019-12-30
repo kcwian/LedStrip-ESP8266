@@ -1,5 +1,5 @@
 import * as WebBrowser from 'expo-web-browser';
-import React from 'react';
+import React, {Component} from 'react';
 import {
   Image,
   Platform,
@@ -12,28 +12,9 @@ import {
   Alert,
   SafeAreaView,
 } from 'react-native';
+
 import Constants from 'expo-constants';
-
-function Separator() {
-  return <View style={styles.separator} />;
-}
-
-function turnLed(value) {
-  var xhttp = new XMLHttpRequest();
-  xhttp.onreadystatechange = function () {
-    if (this.readyState == 4 && this.status == 200) {
-      //document.getElementById("ledState").innerHTML = this.responseText;
-    }
-    if (this.status === 200) {
-      console.log('success', this.responseText);
-    } else {
-      console.log('error', this.responseText);
-    }
-  };
-  xhttp.open("GET", "http://192.168.1.100/turnLed?ledState=" + value, true);
-  xhttp.send();
-}
-
+import { MonoText } from '../components/StyledText';
 import { ColorPicker } from 'react-native-color-picker'
 
 const Picker = () => (
@@ -43,9 +24,33 @@ const Picker = () => (
   />
 )
 
-import { MonoText } from '../components/StyledText';
+export default class HomeScreen extends Component{
 
-export default function HomeScreen(props) {
+  constructor(props)
+  {
+    super(props);
+  }
+ 
+  Separator() {
+    return <View style={styles.separator} />;
+  }
+  
+  turnLed(value) {
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function () {
+      if (this.readyState == 4 && this.status == 200) {
+        //document.getElementById("ledState").innerHTML = this.responseText;
+      }
+      if (this.status === 200) {
+        console.log('success', this.responseText);
+      } else {
+        console.log('error', this.responseText);
+      }
+    };
+    xhttp.open("GET", "http://"+ this.props.screenProps.ipAddress +"/turnLed?ledState=" + value, true);
+    xhttp.send();
+  }
+  render() {
   return (
     <View style={styles.container}>
       <Text> AA</Text>
@@ -66,24 +71,26 @@ export default function HomeScreen(props) {
         </TouchableOpacity>
       </View>
       <View style={styles.fixToText}>
-        <Text>{props.screenProps.ipAddress}</Text>
+        <Text>{this.props.screenProps.ipAddress}</Text>
       </View>
       <Button
         title="Turn Led On"
-        onPress={() => turnLed(1)}
+        onPress={() => this.turnLed(1)}
       />
       <Button
         title="Turn Led Off"
-        onPress={() => turnLed(0)}
+        onPress={() => this.turnLed(0)}
         />
        
     </View >
 
   );
+        }
 }
 
 HomeScreen.navigationOptions = {
-  header: null,
+  // header: null,
+  title: "Led Control"
 };
 
 function DevelopmentModeNotice() {

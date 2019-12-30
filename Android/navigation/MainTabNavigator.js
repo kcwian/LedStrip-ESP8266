@@ -5,6 +5,7 @@ import { createStackNavigator, createBottomTabNavigator } from 'react-navigation
 import TabBarIcon from '../components/TabBarIcon';
 import HomeScreen from '../screens/HomeScreen';
 import ColorsScreen from '../screens/ColorsScreen';
+import AnimationsScreen from '../screens/AnimationsScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 
 const config = Platform.select({
@@ -51,6 +52,22 @@ ColorsStack.navigationOptions = {
 
 ColorsStack.path = '';
 
+const AnimationsStack = createStackNavigator(
+  {
+    Animations: AnimationsScreen,
+  },
+  config
+);
+
+AnimationsStack.navigationOptions = {
+  tabBarLabel: 'Animations',
+  tabBarIcon: ({ focused }) => (
+    <TabBarIcon focused={focused} name={Platform.OS === 'ios' ? 'ios-options' : 'md-hammer'} />
+  ),
+};
+
+AnimationsStack.path = '';
+
 const SettingsStack = createStackNavigator(
   {
     Settings: SettingsScreen,
@@ -70,6 +87,7 @@ SettingsStack.path = '';
 const tabNavigator = createBottomTabNavigator({
   HomeStack,
   ColorsStack,
+  AnimationsStack,
   SettingsStack,
 });
 
